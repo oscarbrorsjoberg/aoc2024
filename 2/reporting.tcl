@@ -1,4 +1,12 @@
 #!/bin/tclsh
 
+if { $argc != 1 } {
+    puts "specifiy input file"
+    return 
+}
 
-if { $argc != 1 }
+set input_file [ lindex ]
+
+open $
+
+
