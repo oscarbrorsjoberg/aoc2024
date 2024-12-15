@@ -25,7 +25,6 @@ proc diffValid { diff isIncreasing wasIncreasing first} {
         return 0
     }
 
-    #puts "curr incr $localIsIncreasing"
     set localWasIncreasing $localIsIncreasing
 
     return 1
@@ -34,7 +33,7 @@ proc diffValid { diff isIncreasing wasIncreasing first} {
 
 # returns 1 for true 0 for false
 #
-proc setValidResult { inList removed} {
+proc setValidResult { inList } {
 
     set isIncreasing 0
     set wasIncreasing 0
@@ -52,48 +51,6 @@ proc setValidResult { inList removed} {
         set diffCB [ expr $valC - $valB ]
 
         if { [diffValid $diffCB isIncreasing wasIncreasing $first] == 0 } {
-
-            if { $removed  == 1 } {
-                return 0
-            }
-
-            set prev [expr $i - 1]
-            set nex [expr $i + 1]
-
-            set resprev 0
-            set rescurr 0
-            set resnext 0
-
-            set totRes 0
-
-            # last
-            if { $i == [llength $inList] } {
-
-                set listwprev [lreplace $inList $prev $prev]
-                set listwcurr [lreplace $inList $i $i]
-
-                set resprev [setValidResult $listwprev 1]
-                set respcurr [setValidResult $listwprev 1]
-
-            } else {
-                set listwprev [lreplace $inList $prev $prev]
-                set listwcurr [lreplace $inList $i $i]
-                set listwnext [lreplace $inList $nex $nex]
-
-                set resprev [setValidResult $listwprev 1]
-                set respcurr [setValidResult $listwcurr 1]
-                set resnext [setValidResult $listwnext 1]
-
-            }
-
-            puts "resprev $resprev "
-            puts "respcurr $respcurr"
-            puts "resnext $resnext "
-
-            if { [expr [expr $resprev + $respcurr] + $resnext] > 0 } {
-                return 1
-
-            }
             return 0
         }
 
@@ -123,17 +80,19 @@ puts "$inputFile"
 while { [gets $infile line] >=  0} {
 
     set reportResult [ split $line " "]
-    set cRep [ setValidResult $reportResult 0 ]
-    set safeReports [ expr $safeReports + $cRep ]
+    set cRep [ setValidResult $reportResult ]
 
-    #puts $reportResult
-    #puts $safeReports
-    #
     if { $cRep == 0 } {
-        puts "cRep: $cRep"
-        puts "$reportResult"
+        for {set j 0 } { $j < [llength $reportResult] } {incr j} {
+            set tempReportResult [lreplace $reportResult $j $j]
+            set cRep [ setValidResult $tempReportResult ]
+            if { $cRep == 1} {
+                break
+            }
+        }
     }
 
+    set safeReports [ expr $safeReports + $cRep ]
     incr numberOfLines
 }
 
