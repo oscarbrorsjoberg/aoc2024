@@ -9,11 +9,12 @@ set infilePath [lindex $argv 0]
 
 set infile [open $infilePath r]
 
-set fileMul 0
-while {[gets $infile line] >= 0} {
-    set res [ regexp -inline -all {mul\((\d+,\d+)\)} $line]
+
+proc findMuls { str1 } {
 
     set totmul 0
+    set res [ regexp -inline -all {mul\((\d+,\d+)\)} $str1]
+
     for {set i 1 } {$i < [llength $res] } {incr i 2} {
 
         set mul [lindex $res $i]
@@ -24,8 +25,59 @@ while {[gets $infile line] >= 0} {
         set totmul [expr $totmul + $locmul]
     }
 
-    #puts $totmul
-    set fileMul [expr $totmul + $fileMul]
+    return $totmul
+}
+
+set fileMul 0
+while {[gets $infile line] >= 0} {
+
+
+    set donts [ regexp -indices -inline -all {(don't\(\))} $line ]
+    set dos [ regexp -indices -inline -all {(do\(\))} $line ]
+    set dontsdo [ regexp -indices -inline -all {(don't\(\).*?do\(\))} $line  ]
+
+    #puts "line dontsdo"
+    #puts $dontsdo
+    #puts "line donts"
+    #puts $donts
+    #puts "line dos"
+    #puts $dos
+    #
+    regsub -all {(don't\(\).*?do\(\))} $line "" res
+
+    set donts [ regexp -indices -inline -all {(don't\(\))} $res ]
+    set dos [ regexp -indices -inline -all {(do\(\))} $res ]
+
+
+    puts "res donts"
+    puts $donts
+    puts "res dos"
+    puts $dos
+
+    #
+    set donts [ regexp -all {(don't\(\).*)} $res ]
+
+    puts "donts"
+    puts $donts
+
+    if { $donts == 1 } {
+
+        puts $res
+        regsub -all {(don't\(\).*)} $res "" res
+        set donts [ regexp -all {(don't\(\).*)} $res ]
+        puts $res
+
+    }
+
+    #puts $res
+
+    #puts $donts
+    #puts $dos
+    
+
+    set mulRes [ findMuls $res ]
+    puts $mulRes
+    set fileMul [expr $mulRes + $fileMul]
 
 }
 
