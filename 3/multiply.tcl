@@ -29,8 +29,11 @@ proc findMuls { str1 } {
 }
 
 set fileMul 0
-while {[gets $infile line] >= 0} {
 
+set completestr ""
+
+while {[gets $infile line] >= 0} {
+    set completestr "$completestr$line"
 
     set donts [ regexp -indices -inline -all {(don't\(\))} $line ]
     set dos [ regexp -indices -inline -all {(do\(\))} $line ]
@@ -42,32 +45,8 @@ while {[gets $infile line] >= 0} {
     #puts $donts
     #puts "line dos"
     #puts $dos
-    #
-    regsub -all {(don't\(\).*?do\(\))} $line "" res
-
-    set donts [ regexp -indices -inline -all {(don't\(\))} $res ]
-    set dos [ regexp -indices -inline -all {(do\(\))} $res ]
-
-
-    puts "res donts"
-    puts $donts
-    puts "res dos"
-    puts $dos
-
-    #
-    set donts [ regexp -all {(don't\(\).*)} $res ]
-
-    puts "donts"
-    puts $donts
-
-    if { $donts == 1 } {
-
-        puts $res
-        regsub -all {(don't\(\).*)} $res "" res
-        set donts [ regexp -all {(don't\(\).*)} $res ]
-        puts $res
-
-    }
+    
+    
 
     #puts $res
 
@@ -75,10 +54,25 @@ while {[gets $infile line] >= 0} {
     #puts $dos
     
 
-    set mulRes [ findMuls $res ]
-    puts $mulRes
-    set fileMul [expr $mulRes + $fileMul]
+    #puts $mulRes
+    #set fileMul [expr $mulRes + $fileMul]
 
 }
 
-puts $fileMul
+
+regsub -all {(don't\(\).*?do\(\))} $completestr "" res
+set donts [ regexp -indices -inline -all {(don't\(\).*)} $res ]
+
+#puts "donts"
+#puts $donts
+
+if { $donts == 1 } {
+
+    regsub -all {(don't\(\).*)} $completestr "" res
+    #set donts [ regexp -all {(don't\(\).*)} $res ]
+    #puts $res
+}
+
+set mulRes [ findMuls $res ]
+
+puts $mulRes
