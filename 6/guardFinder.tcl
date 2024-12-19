@@ -7,8 +7,8 @@ set yMax 0
 set xMax 0
 set guard "F"
 
-set precalcSteps 46
-# set precalcSteps 5865
+set precalcStep 46
+#set precalcStep 5865
 
 proc setStepDir {guard} {
     switch $guard {
@@ -67,29 +67,21 @@ proc rotateRight { stepDir } {
     set localStepDir [lreplace $localStepDir 0 0 $newX]
     set localStepDir [lreplace $localStepDir 1 1 $newY]
 }
-proc drawDrawMap {} {
-    global drawMap
-    foreach row $drawMap {
+
+proc drawDrawMap { dMap } {
+    foreach row $dMap {
         puts $row
     }
 }
 
-proc drawX {xPos yPos dMap} {
+proc drawSymbol {xPos yPos dMap symbol} {
 
     upvar $dMap drawMap
     global yMax
-    set yC [expr $yMax - $yPos]
+    set yC [expr [expr $yMax - 1 ] - $yPos]
     set lrow [lindex $drawMap $yC ]
-    set rstr [string replace $lrow $xPos $xPos "X"]
+    set rstr [string replace $lrow $xPos $xPos $symbol]
     set drawMap [lreplace $drawMap $yC $yC $rstr]
-}
-
-proc drawXInString {xPos yPos trimData} {
-    upvar $trimData tData
-    global xMax
-
-    set sPos [expr [expr $yPos * $xMax] + $xPos]
-    set tData [string replace $tData $sPos $sPos "X"]
 }
 
 proc drawGuard {xPos yPos dMap} {
@@ -98,7 +90,7 @@ proc drawGuard {xPos yPos dMap} {
     global yMax
     global guard
 
-    set yC [expr $yMax - $yPos]
+    set yC [expr [expr $yMax - 1 ] - $yPos]
     set lrow [lindex $drawMap $yC ]
     set rstr [string replace $lrow $xPos $xPos $guard]
     set drawMap [lreplace $drawMap $yC $yC $rstr]
@@ -113,6 +105,31 @@ proc guardStep {xpos ypos stepDir } {
     set lypos [expr $lypos + $yd ]
 }
 
+
+proc checkPos {xpos ypos dMap } {
+    upvar $dMap drawMap
+    global yMax
+
+    set yC [expr [expr $yMax - 1] - $ypos]
+    set lrow [lindex $drawMap $yC ]
+    set clett [string index $lrow $xpos]
+
+    switch $clett {
+        "#" {
+            return 1
+        }
+        "^" {
+            return 1
+        }
+        default {
+            return 0
+        }
+
+    }
+
+}
+
+
 proc checkObs {xpos ypos stepDir dMap} {
 
     upvar $dMap drawMap
@@ -123,12 +140,15 @@ proc checkObs {xpos ypos stepDir dMap} {
     set nxpos [expr $xpos + $xd ]
     set nypos [expr $ypos + $yd ]
 
-    set yC [expr $yMax - $nypos]
+    set yC [expr [ expr $yMax - 1 ] - $nypos]
     set lrow [lindex $drawMap $yC ]
     set clett [string index $lrow $nxpos]
 
     switch $clett {
         "#" {
+            return 1
+        }
+        "O" {
             return 1
         }
         default {
@@ -163,30 +183,6 @@ proc isGuardOnMap {xpos ypos maxX maxY} {
     return 1
 }
 
-proc randomGuardWalk {xposStart yposStart stepDir guard } {
-
-
-    while { $guardOnMap } {
-
-    guardStep xpos ypos $stepDir
-    incr steps
-
-    if { [checkObs $xpos $ypos $stepDir] == 1 } {
-        rotateRight stepDir
-        set guard [setGuard $stepDir]
-    }
-
-
-
-    drawGuard $xpos $ypos drawMap
-
-    set guardOnMap [isGuardOnMap $xpos $ypos $boundX $boundY ]
-
-    drawX $xpos $ypos drawMap
-
-    }
-}
-
     
 if {$argc != 1} {
     puts "need input file"
@@ -218,56 +214,104 @@ if { [regexp -indices {V|>|<|\^} $trimData sPos] != 1 } {
     puts "wrong number of guards!"
 }
 
-set stepDir [setStepDir $guard]
 set sPos [lindex $sPos 0]
 
 set xpos [expr $sPos % $xMax ]
-set ypos [expr $yMax - [expr $sPos / $xMax]]
+set ypos [expr [expr $yMax - 1 ] - [expr $sPos / $xMax]]
 
-set guardOnMap 1
+
 set boundX [expr $xMax - 1]
 set boundY [expr $yMax - 1]
 
+set origDrawMap $drawMap
+set origXpos $xpos
+set origYpos $ypos
 
-drawX $xpos $ypos drawMap
 
-set steps 0
+#drawSymbol $xpos $ypos drawMap "X"
+
+set originalStepDir [setStepDir $guard]
+
+set obsRun 0
+set loopCounter 0
+
+for {set obsy 0} {$obsy < $yMax} {incr obsy } {
+    for {set obsx 0 } {$obsx < $xMax } {incr obsx} {
 
 
-while { $guardOnMap } {
-    #puts "\033\[2J"
-    #puts "\033\[H"
+        set guardOnMap 1
+        set drawMap $origDrawMap
 
-    guardStep xpos ypos $stepDir
-    incr steps
+        if { [ checkPos $obsx $obsy drawMap] == 1 } {
+            continue
+        }
 
-    if { [checkObs $xpos $ypos $stepDir drawMap] == 1 } {
-        rotateRight stepDir
-        set guard [setGuard $stepDir]
+        set xpos $origXpos 
+        set ypos $origYpos 
+
+        set stepDir $originalStepDir
+
+        drawSymbol $obsx $obsy drawMap "O"
+
+        #puts "\033\[2J"
+        #puts "\033\[H"
+        #
+        #drawDrawMap $drawMap
+        #after 80
+
+        set steps 0
+        while { $guardOnMap } {
+
+            guardStep xpos ypos $stepDir
+            incr steps
+
+            set rightTurns 0
+            while { [checkObs $xpos $ypos $stepDir drawMap] == 1 } {
+                rotateRight stepDir
+                set guard [setGuard $stepDir]
+                incr rightTurns 
+                if { [expr $rightTurns > 3 ] } {
+                    puts "WEVE DONE A 360"
+                    exit
+                }
+            }
+
+            #drawGuard $xpos $ypos drawMap
+
+            set guardOnMap [isGuardOnMap $xpos $ypos $boundX $boundY ]
+
+            #drawSymbol $xpos $ypos drawMap "X"
+            #puts "\033\[2J"
+            #puts "\033\[H"
+
+            #drawDrawMap $drawMap
+            #after 30
+
+            if {[expr $steps > [expr 5 * $precalcStep ] ] } {
+                incr loopCounter
+                break
+            }
+        }
+
+        #puts "Guard left the Arena"
+        #puts "steps $steps"
+        #puts $xpos
+        #puts $ypos
+        #after 500
+
+        drawSymbol $xpos $ypos drawMap "X"
+        incr obsRun
     }
-
-
-
-    drawGuard $xpos $ypos drawMap
-    #drawDrawMap
-    #after 3
-
-    set guardOnMap [isGuardOnMap $xpos $ypos $boundX $boundY ]
-
-    drawX $xpos $ypos drawMap
-
 }
 
-#puts "\033\[2J"
-#puts "\033\[H"
 
-drawX $xpos $ypos drawMap
 
-#drawDrawMap
+
+
 
 set nmbrOfXs [findXs]
-
-puts "Guard left the Arena"
 puts "Pos: $nmbrOfXs"
+puts "Loops $loopCounter"
+
 puts "steps $steps"
 
