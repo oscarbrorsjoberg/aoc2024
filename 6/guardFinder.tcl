@@ -118,11 +118,8 @@ proc checkPos {xpos ypos dMap } {
         default {
             return 0
         }
-
     }
-
 }
-
 
 proc checkObs {xpos ypos stepDir dMap} {
 
@@ -191,6 +188,210 @@ proc isGuardOnMap {xpos ypos maxX maxY} {
 }
 
 
+proc getEastRowObs {drawMap lxpos lypos} {
+    upvar $drawMap dMap
+
+    global yMax
+    global xMax
+    set yC [expr [expr $yMax - 1 ] - $lypos]
+    set lrow [lindex $dMap $yC ]
+
+    set rstr [string range  $lrow [expr $lxpos + 1] $xMax]
+
+    if { [ string length $rstr ] <= 0 } {
+        puts "no string to the right, walked outside"
+        return {}
+    }
+    set obs [string first [# O] $rstr]
+
+    if { [expr $obs > -1 ]} {
+        set xpos [expr $lxpos + $obs]
+        set ypos [expr [expr $yMax - 1 ] - $yC ]
+
+        return [list $xpos $ypos]
+    } else {
+        return {}
+    }
+}
+
+proc getWestRowObs {drawMap lxpos lypos} {
+    upvar $drawMap dMap
+
+    global yMax
+    global xMax
+
+    set yC [expr [expr $yMax - 1 ] - $lypos]
+    set lrow [lindex $dMap $yC ]
+
+    set rstr [string range  $lrow 0 [expr $lxpos - 1] ]
+    set rstr [string reverse $rstr]
+
+    if { [ string length $rstr ]  <= 0} {
+        puts "no string to the right, walked outside"
+        return {}
+    }
+
+    set obs [string first [# O] $rstr]
+    if { [expr $obs > -1 ]} {
+        set xpos [expr $lxpos - $obs]
+        set ypos [expr [expr $yMax - 1 ] - $yC ]
+        return [list $xpos $ypos]
+    } else {
+        return false
+    }
+}
+
+proc getSouthColObs {drawMap lxpos lypos} {
+    upvar $drawMap dMap
+    global yMax
+    global xMax
+
+    set yC [expr [expr [expr $yMax - 1 ] - $lypos] + 1]
+
+    for {set i $yC} {$i <= [ expr $yMax - 1 ] } { incr i} {
+        set crow [lindex $dMap $i ]
+        set cletter [string index $crow $lxpos]
+        switch $cletter {
+            "#" {
+                    set xpos $lxpos
+                    set ypos [expr [expr $yMax - 1 ] - [expr $i - 1] ]
+                    return [list $xpos $ypos]
+            }
+            "O" {
+                    set xpos $lxpos
+                    set ypos [expr [expr $yMax - 1 ] - [expr $i - 1] ]
+                    return [list $xpos $ypos]
+            }
+            "." {
+                continue
+            }
+            default {
+                puts "hic sunt draconis"
+            }
+
+        }
+    }
+
+    return {}
+
+}
+
+proc getNorthColObs {drawMap lxpos lypos} {
+    upvar $drawMap dMap
+    global yMax
+    global xMax
+
+    set yC [expr [expr [expr $yMax - 1 ] - $lypos] - 1]
+
+    for {set i $yC} {$i >= 0 } { incr i -1} {
+        set crow [lindex $dMap $i ]
+        set cletter [string index $crow $lxpos]
+
+        switch $cletter {
+            "#" {
+                    set xpos $lxpos
+                    set ypos [expr [expr $yMax - 1 ] - [expr $i + 1] ]
+                    return [list $xpos $ypos]
+            }
+            "O" {
+                    set xpos $lxpos
+                    set ypos [expr [expr $yMax - 1 ] - [expr $i - 1] ]
+                    return [list $xpos $ypos]
+            }
+            "." {
+                continue
+            }
+            default {
+                puts "hic sunt draconis"
+            }
+
+        }
+    }
+
+    return false
+
+}
+proc lookAhead {dMap stepDir xpos ypos} {
+    upvar $dMap cdrawMap
+
+    upvar $xpos lxpos 
+    upvar $ypos lypos 
+    set txpos $lxpos
+    set typos $lypos
+
+    set x [lindex $stepDir 0]
+
+    set loaPos {}
+
+    switch $x {
+       "1" { 
+            set loaPos [getEastRowObs cdrawMap $txpos $typos]
+       }
+       "-1" { 
+            set loaPos [getWestRowObs cdrawMap $txpos $typos]
+       }
+       "0" { 
+           set y [lindex $stepDir 1]
+           switch $y {
+               "1" {
+                   set loaPos [getNorthColObs cdrawMap $txpos $typos]
+               }
+               "-1" {
+                   set loaPos [getSouthColObs cdrawMap $txpos $typos]
+
+               }
+               default {
+                   puts "Y hic sunt draconis"
+                return -1
+            }
+            }
+           }
+       default {
+           puts "X hic sunt draconis"
+           return -1
+       }
+    }
+
+    if { [llength $loaPos] == 2 } {
+        set lxpos [lindex $loaPos 0]
+        set lypos [lindex $loaPos 1]
+        return 1
+
+    } else {
+        return 0
+    }
+
+}
+
+proc guardPatrol2 { dMap xpos ypos stepDir lc countingLoop} {
+
+        global precalcStep
+        set guard "^"
+        set guardOnMap 1
+
+        upvar $lc loopCounter
+        upvar $dMap drawMap
+
+
+        set steps 0
+        set i 0
+
+        while { $guardOnMap } {
+            #look ahead
+            if { [ lookAhead drawMap $stepDir xpos ypos] == 1 } {
+                incr i
+                rotateRight stepDir
+
+            } else {
+                incr i
+                puts "outside on step $i"
+                set guardOnMap 0
+
+            }
+            
+        }
+}
+
 proc guardPatrol { dMap xpos ypos stepDir lc countingLoop} {
 
         global xMax
@@ -206,6 +407,7 @@ proc guardPatrol { dMap xpos ypos stepDir lc countingLoop} {
 
         set guardOnMap 1
         set steps 0
+        set obsCount 0
         while { $guardOnMap } {
 
             drawSymbol $xpos $ypos drawMap "X"
@@ -214,6 +416,7 @@ proc guardPatrol { dMap xpos ypos stepDir lc countingLoop} {
 
             set rightTurns 0
             while { [checkObs $xpos $ypos $stepDir drawMap] == 1 } {
+                incr obsCount
                 rotateRight stepDir
                 set guard [setGuard $stepDir]
                 incr rightTurns 
@@ -233,7 +436,7 @@ proc guardPatrol { dMap xpos ypos stepDir lc countingLoop} {
 
             set guardOnMap [isGuardOnMap $xpos $ypos $boundX $boundY ]
 
-            if { $countingLoop } {
+            if {  $countingLoop == 1 } {
 
                 if {[expr $steps > [expr 5 * $precalcStep ] ] } {
                     incr loopCounter
@@ -242,42 +445,8 @@ proc guardPatrol { dMap xpos ypos stepDir lc countingLoop} {
 
             }
         }
-}
 
-
-proc process_range {start end } {
-
-    global origDrawMap
-    global origXpos
-    global origYpos
-    global originalStepDir
-    global xLocs
-
-    set loopCounter 0
-
-    for {set i $start} { $i < $end} {incr i} {
-        set loc [lindex $xLocs $i]
-
-        set dMap $origDrawMap
-
-        set obsx [lindex $loc 0]
-        set obsy [lindex $loc 1]
-
-        if { [ checkPos $obsx $obsy dMap] == 1 } {
-             continue
-         }
-
-         set xpos $origXpos 
-         set ypos $origYpos 
-
-         set stepDir $originalStepDir
-
-         drawSymbol $obsx $obsy dMap "O"
-
-         guardPatrol dMap $xpos $ypos $stepDir loopCounter 1
-
-         puts "loopCount $loopCounter"
-     }
+        puts $obsCount
 }
 
 
@@ -297,6 +466,9 @@ set map [lrange $map 0 [expr [llength $map] - 2]]
 
 set xMax [string length [lindex $map 0 ]]
 set yMax [llength $map]
+
+set boundX []
+set boundY [expr $yMax - 1]
 
 regsub -all {\n} $data "" trimData
 
@@ -333,8 +505,17 @@ set ypos $origYpos
 set stepDir $originalStepDir
 
 set countingLoop 0
+set loopCounter 0
 
-guardPatrol drawMap $xpos $ypos $stepDir loopCounter $countingLoop
+#set t2 [time [guardPatrol drawMap $xpos $ypos $stepDir loopCounter $countingLoop] 1000]
+
+set xpos $origXpos 
+set ypos $origYpos 
+set stepDir $originalStepDir
+
+set t2 [time [guardPatrol2 drawMap $xpos $ypos $stepDir loopCounter $countingLoop] 1000]
+
+puts $t2
 
 set xLocs {}
 
@@ -342,67 +523,29 @@ set nmbrOfXs [findXs drawMap xLocs]
 
 puts "number of pos $nmbrOfXs"
 
-#drawDrawMap $drawMap
-
-
-#set numThreads 4
-#set rangeStart 0
-#set rangeEnd [llength $xLocs]
-#set rangeSize [expr {($rangeEnd - $rangeStart + 1) / $numThreads}]
+#foreach loc $xLocs {
 #
-#set threads {}
+#    set dMap $origDrawMap
 #
-#for {set j 0 } {$j < $numThreads } {incr j } {
-#    set start [expr {$rangeStart + $j * $rangeSize}]
-#    set end [expr {$start + $rangeSize - 1}]
-#    if {$j == [expr {$numThreads - 1 }]} {
-#        set end $rangeEnd
-#    }
+#    set obsx [lindex $loc 0]
+#    set obsy [lindex $loc 1]
 #
-#    lappend threads [thread::create { 
-#        global start 
-#        global end 
-#        process_range $start $end
-#    }]
+#    if { [ checkPos $obsx $obsy dMap] == 1 } {
+#         continue
+#     }
+#
+#     set xpos $origXpos 
+#     set ypos $origYpos 
+#
+#     set stepDir $originalStepDir
+#
+#     drawSymbol $obsx $obsy dMap "O"
+#
+#     guardPatrol dMap $xpos $ypos $stepDir loopCounter 1
+#
+#     incr obsRun
+#
 #}
-#
-#foreach t $threads {
-#    thread::wait $t
-#}
-
-foreach loc $xLocs {
-
-    set dMap $origDrawMap
-
-    set obsx [lindex $loc 0]
-    set obsy [lindex $loc 1]
-
-    if { [ checkPos $obsx $obsy dMap] == 1 } {
-         continue
-     }
-
-     set xpos $origXpos 
-     set ypos $origYpos 
-
-     set stepDir $originalStepDir
-
-     drawSymbol $obsx $obsy dMap "O"
-
-     guardPatrol dMap $xpos $ypos $stepDir loopCounter 1
-
-     incr obsRun
-
-}
-
-
-#
-#for {set obsy 0} {$obsy < $yMax} {incr obsy } {
-#    for {set obsx 0 } {$obsx < $xMax } {incr obsx} {
-#
-#
-#    }
-#}
-#
 
 puts "Loops $loopCounter"
 

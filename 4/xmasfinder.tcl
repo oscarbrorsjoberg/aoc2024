@@ -145,12 +145,6 @@ for {set l [expr $lengthSearchWord  ]} { $l <= $timesInLoop } {incr l } {
         set numberOfIter [expr $l + 1]
     }
 
-    #puts "srow $startRow"
-    #puts "erow $endRow"
-    #puts "scol $startCol"
-    #puts "ecol $endCol"
-    #puts "i $numberOfIter"
-    #
     set r $startRow
     set c $startCol
     
@@ -159,10 +153,6 @@ for {set l [expr $lengthSearchWord  ]} { $l <= $timesInLoop } {incr l } {
     set i 0
     while { [expr $i < $numberOfIter] } {
 
-        #puts "r $r"
-        #puts "c $c"
-        #puts "i $i"
-        #
         set crow [ lindex $rows $r ]
         set cletter [ string index $crow $c]
         set currString [ string cat $currString $cletter ]
@@ -258,14 +248,3 @@ for {set i 1} {$i < [expr $nmbrOfRows - 1]} {incr i} {
 }
 
 puts "tot masses found $massesFound"
-
-
-#puts rows
-#puts $cols
-#puts $diaga
-#puts $diagb
-#
-#
-#
-#
-

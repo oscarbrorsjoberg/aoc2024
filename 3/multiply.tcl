@@ -38,39 +38,14 @@ while {[gets $infile line] >= 0} {
     set donts [ regexp -indices -inline -all {(don't\(\))} $line ]
     set dos [ regexp -indices -inline -all {(do\(\))} $line ]
     set dontsdo [ regexp -indices -inline -all {(don't\(\).*?do\(\))} $line  ]
-
-    #puts "line dontsdo"
-    #puts $dontsdo
-    #puts "line donts"
-    #puts $donts
-    #puts "line dos"
-    #puts $dos
-    
-    
-
-    #puts $res
-
-    #puts $donts
-    #puts $dos
-    
-
-    #puts $mulRes
-    #set fileMul [expr $mulRes + $fileMul]
-
 }
 
 
 regsub -all {(don't\(\).*?do\(\))} $completestr "" res
 set donts [ regexp -indices -inline -all {(don't\(\).*)} $res ]
 
-#puts "donts"
-#puts $donts
-
 if { $donts == 1 } {
-
     regsub -all {(don't\(\).*)} $completestr "" res
-    #set donts [ regexp -all {(don't\(\).*)} $res ]
-    #puts $res
 }
 
 set mulRes [ findMuls $res ]
